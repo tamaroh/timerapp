@@ -80,6 +80,16 @@ body {
   gap: clamp(0.85rem, 2.75vw, 1.1rem);
 }
 
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.85rem, 2.5vw, 1.25rem);
+}
+
+.action-buttons .btn.stop {
+  display: none;
+}
+
 .btn {
   border: none;
   border-radius: 16px;
@@ -142,6 +152,20 @@ body {
   text-align: center;
   font-size: clamp(1rem, 2.4vw, 1.15rem);
   color: var(--fg-muted);
+}
+
+.app.is-running .preset-buttons {
+  display: none;
+}
+
+.app.is-running .action-buttons .btn:not(.stop) {
+  display: none;
+}
+
+.app.is-running .action-buttons .btn.stop {
+  display: inline-flex;
+  flex: 1;
+  max-width: 260px;
 }
 
 @media (max-width: 540px) {

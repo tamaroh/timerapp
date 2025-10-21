@@ -8,10 +8,11 @@
   ];
 
   const refs = {
+    app: document.querySelector(".app"),
     display: document.getElementById("time-display"),
     presetContainer: document.querySelector(".preset-buttons"),
     startButton: document.getElementById("start-btn"),
-    pauseButton: document.getElementById("pause-btn"),
+    stopButton: document.getElementById("stop-btn"),
     resetButton: document.getElementById("reset-btn"),
     statusText: document.getElementById("status-text"),
   };
@@ -23,6 +24,7 @@
     activePreset: null,
     isRunning: false,
   };
+  let audioCtx = null;
 
   function formatTime(totalSeconds) {
     const minutes = Math.floor(totalSeconds / 60)
@@ -60,8 +62,32 @@
 
     updateDisplay(timerState.remainingSeconds);
     updateButtons({ hasPreset: true, isRunning: false });
+    setRunningUI(false);
     highlightActivePreset(buttonElement);
     refs.statusText.textContent = `Ready: ${preset.label}`;
+  }
+
+  function setRunningUI(isRunning) {
+    refs.app?.classList.toggle("is-running", isRunning);
+  }
+
+  function ensureAudioContext() {
+    if (audioCtx) {
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch((error) => {
+          console.error("Audio resume failed", error);
+        });
+      }
+      return audioCtx;
+    }
+
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (error) {
+      console.error("Audio context unavailable", error);
+    }
+
+    return audioCtx;
   }
 
   function highlightActivePreset(buttonElement) {
@@ -75,7 +101,7 @@
 
   function updateButtons({ hasPreset, isRunning }) {
     refs.startButton.disabled = !hasPreset || isRunning;
-    refs.pauseButton.disabled = !isRunning;
+    refs.stopButton.disabled = !isRunning;
     refs.resetButton.disabled = !hasPreset;
   }
 
@@ -89,9 +115,12 @@
   function startTimer() {
     if (!timerState.totalSeconds || timerState.isRunning) return;
 
+    ensureAudioContext();
+
     const endTime = Date.now() + timerState.remainingSeconds * 1000;
     timerState.isRunning = true;
     updateButtons({ hasPreset: true, isRunning: true });
+    setRunningUI(true);
     refs.statusText.textContent = "Running";
 
     tick();
@@ -107,18 +136,20 @@
         clearCountdown();
         timerState.isRunning = false;
         updateButtons({ hasPreset: true, isRunning: false });
+        setRunningUI(false);
         refs.statusText.textContent = "Done";
         playAlarm();
       }
     }, 200);
   }
 
-  function pauseTimer() {
+  function stopTimer() {
     if (!timerState.isRunning) return;
     clearCountdown();
     timerState.isRunning = false;
-    updateButtons({ hasPreset: true, isRunning: false });
-    refs.statusText.textContent = "Paused";
+    updateButtons({ hasPreset: Boolean(timerState.totalSeconds), isRunning: false });
+    setRunningUI(false);
+    refs.statusText.textContent = "Stopped";
   }
 
   function resetTimer() {
@@ -127,6 +158,7 @@
     timerState.isRunning = false;
     updateDisplay(timerState.remainingSeconds || 0);
     updateButtons({ hasPreset: Boolean(timerState.totalSeconds), isRunning: false });
+    setRunningUI(false);
     refs.statusText.textContent = timerState.totalSeconds ? "Reset" : "";
     if (timerState.activePreset) {
       highlightActivePreset(timerState.activePreset);
@@ -138,25 +170,33 @@
   }
 
   function playAlarm() {
+    const context = ensureAudioContext();
+    if (!context) return;
+
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const duration = 1.2; // seconds
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+      const duration = 1.6;
+      const now = context.currentTime;
 
-      oscillator.type = "triangle";
-      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + duration);
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
 
-      gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      oscillator.type = "square";
+      oscillator.frequency.setValueAtTime(880, now);
+      oscillator.frequency.setValueAtTime(660, now + 0.4);
+      oscillator.frequency.setValueAtTime(990, now + 0.8);
+      oscillator.frequency.setValueAtTime(440, now + 1.2);
+
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.5, now + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.35, now + 0.6);
+      gainNode.gain.setValueAtTime(0.35, now + 0.9);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+      gainNode.connect(context.destination);
 
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + duration);
+      oscillator.start(now);
+      oscillator.stop(now + duration);
     } catch (error) {
       console.error("Alarm failed", error);
     }
@@ -164,7 +204,7 @@
 
   function setupActions() {
     refs.startButton.addEventListener("click", startTimer);
-    refs.pauseButton.addEventListener("click", pauseTimer);
+    refs.stopButton.addEventListener("click", stopTimer);
     refs.resetButton.addEventListener("click", resetTimer);
   }
 
@@ -173,6 +213,7 @@
     setupActions();
     updateDisplay(0);
     updateButtons({ hasPreset: false, isRunning: false });
+    setRunningUI(false);
   }
 
   bootstrap();
