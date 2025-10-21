@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timer App</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="header">
+      <h1>Timer</h1>
+    </header>
+    <main class="main" aria-live="polite">
+      <section class="display">
+        <span id="time-display" class="time" role="timer" aria-live="assertive">00:00</span>
+      </section>
+      <section class="controls" aria-label="Timer controls">
+        <div class="preset-buttons" role="group" aria-label="Preset durations">
+          <!-- Preset buttons rendered via JS -->
+        </div>
+        <div class="action-buttons" role="group" aria-label="Timer actions">
+          <button id="start-btn" class="btn action" type="button">Start</button>
+          <button id="pause-btn" class="btn action" type="button" disabled>Pause</button>
+          <button id="reset-btn" class="btn action" type="button" disabled>Reset</button>
+        </div>
+      </section>
+      <section class="status" aria-live="polite">
+        <span id="status-text"></span>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
